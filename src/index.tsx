@@ -57,26 +57,39 @@ function agentDesc(session: SessionInfo) {
 
 type ReviewVerdict = "APPROVED" | "REJECTED" | "BLOCKED"
 
+type Review = {
+  verdict: ReviewVerdict
+  next?: string
+  findings: string[]
+  fixes: string[]
+  instructions: string[]
+}
+
 // Reviewers end their answer with a `REVIEW_STATUS: APPROVED|REJECTED|BLOCKED`
 // line. The template itself contains all three words separated by pipes, so the
 // negative lookahead keeps that echoed line from being mistaken for a verdict.
 const REVIEW_STATUS = /REVIEW_STATUS\s*:\s*(APPROVED|REJECTED|BLOCKED)(?!\s*\|)/gi
+const REVIEW_LABELS = "REVIEW_STATUS|FINDINGS|REQUIRED_FIXES|NEXT_SLICE|DEVELOPER_INSTRUCTIONS"
+
+// Reads the lines of a labeled block, stopping at the next ALL_CAPS label.
+function sectionLines(text: string, label: string) {
+  const pattern = new RegExp(`(?:^|\\n)\\s*${label}\\s*:\\s*`, "gi")
+  let start = -1
+  for (const match of text.matchAll(pattern)) start = (match.index ?? 0) + match[0].length
+  if (start < 0) return []
+  const rest = text.slice(start)
+  const stop = rest.search(new RegExp(`\\n\\s*(?:${REVIEW_LABELS})\\s*:`, "i"))
+  const body = stop === -1 ? rest : rest.slice(0, stop)
+  return body
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+}
 
 // Reads a labeled block such as `NEXT_SLICE:` and joins its lines into one
 // short sentence, stopping at the next ALL_CAPS label (FINDINGS, REQUIRED_FIXES…).
 function sectionValue(text: string, label: string) {
-  const pattern = new RegExp(`${label}\\s*:`, "gi")
-  let start = -1
-  for (const match of text.matchAll(pattern)) start = (match.index ?? 0) + match[0].length
-  if (start < 0) return undefined
-  const rest = text.slice(start)
-  const stop = rest.search(/\n\s*[A-Z][A-Z_]{2,}\s*:/)
-  const body = (stop === -1 ? rest : rest.slice(0, stop))
-    .split("\n")
-    .map((line) => line.replace(/^\s*[-*]\s*/, "").trim())
-    .filter(Boolean)
-    .join(" ")
-    .trim()
+  const body = sectionLines(text, label).join(" ").trim()
   return body || undefined
 }
 
@@ -388,6 +401,9 @@ function Agent(props: {
         return {
           verdict: hit.toUpperCase() as ReviewVerdict,
           next: sectionValue(text, "NEXT_SLICE"),
+          findings: sectionLines(text, "FINDINGS"),
+          fixes: sectionLines(text, "REQUIRED_FIXES"),
+          instructions: sectionLines(text, "DEVELOPER_INSTRUCTIONS"),
         }
       }
     }
@@ -397,6 +413,13 @@ function Agent(props: {
   const nextSlice = () => {
     const value = review()
     return value?.verdict === "APPROVED" ? value.next : undefined
+  }
+  const openReason = () => {
+    const value = review()
+    if (!value) return
+    const close = () => context.ui.dialog.clear()
+    context.ui.dialog.show(() => <ReviewReason review={value} context={context} close={close} />)
+    context.ui.dialog.set({ size: "large", centered: true })
   }
   const verdictColor = createMemo(() => {
     const value = verdict()
@@ -441,12 +464,19 @@ function Agent(props: {
       <Show when={!props.primary}>
         <text fg={theme().text.muted}>  {agentDesc(props.session)}</text>
       </Show>
-      <Show when={verdict()}>
+      <Show when={!props.primary && verdict()}>
         {(value) => (
-          <text fg={verdictColor()}>  review: {value().toLowerCase()}</text>
+          <box flexDirection="row" gap={1}>
+            <text fg={verdictColor()}>  review: {value().toLowerCase()}</text>
+            <Show when={value() === "REJECTED"}>
+              <text fg={theme().hue.interactive[200]} onMouseDown={openReason}>
+                [reason]
+              </text>
+            </Show>
+          </box>
         )}
       </Show>
-      <Show when={nextSlice()}>
+      <Show when={!props.primary && nextSlice()}>
         {(value) => <text fg={STATE_COLORS.tool}>  next: {shortText(value())}</text>}
       </Show>
       <Show when={open()}>
@@ -454,6 +484,75 @@ function Agent(props: {
         <text fg={theme().text.muted}>  tool: {tool() ? toolSummary(tool()!) : "-"}</text>
         <text fg={theme().text.muted}>  cost: {money.format(props.session.cost ?? 0)}</text>
       </Show>
+    </box>
+  )
+}
+
+function ReviewReason(props: { review: Review; context: Context; close: () => void }) {
+  const theme = () => props.context.theme
+  return (
+    <box flexDirection="column" gap={1} width="100%">
+      <box flexDirection="row" justifyContent="space-between" width="100%">
+        <text fg={theme().text.feedback.error.base}>
+          <b>Review rejected</b>
+        </text>
+        <text fg={theme().hue.interactive[200]} onMouseDown={props.close}>
+          [x] close
+        </text>
+      </box>
+      <scrollbox height={16} width="100%">
+        <box flexDirection="column" gap={1}>
+          <Show when={props.review.findings.length > 0}>
+            <text fg={theme().text.base}>
+              <b>FINDINGS</b>
+            </text>
+            <For each={props.review.findings}>
+              {(line) => (
+                <text fg={theme().text.muted} wrapMode="word">
+                  {line}
+                </text>
+              )}
+            </For>
+          </Show>
+          <Show when={props.review.fixes.length > 0}>
+            <text fg={theme().text.base}>
+              <b>REQUIRED FIXES</b>
+            </text>
+            <For each={props.review.fixes}>
+              {(line) => (
+                <text fg={theme().text.muted} wrapMode="word">
+                  {line}
+                </text>
+              )}
+            </For>
+          </Show>
+          <Show when={props.review.instructions.length > 0}>
+            <text fg={theme().text.base}>
+              <b>DEVELOPER INSTRUCTIONS</b>
+            </text>
+            <For each={props.review.instructions}>
+              {(line) => (
+                <text fg={theme().text.muted} wrapMode="word">
+                  {line}
+                </text>
+              )}
+            </For>
+          </Show>
+          <Show when={props.review.next}>
+            {(value) => (
+              <>
+                <text fg={theme().text.base}>
+                  <b>NEXT SLICE</b>
+                </text>
+                <text fg={STATE_COLORS.tool} wrapMode="word">
+                  {value()}
+                </text>
+              </>
+            )}
+          </Show>
+        </box>
+      </scrollbox>
+      <text fg={theme().text.muted}>esc to close</text>
     </box>
   )
 }

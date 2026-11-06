@@ -43,6 +43,7 @@
 - **空闲代理仍然可见：** 子代理完成后会带着暗色 `-` 标记留在列表中，随时知道谁在空闲，而不是看着行消失
 - **长会话也保持整洁：** 主列表只保留每个子代理最近一次运行，较早的记录默认隐藏，可通过 `history` 复选框按需显示并分页查看
 - **一眼看到 Reviewer 结论：** 子代理以单独的 `REVIEW_STATUS:` 结论结束时，侧栏会在下方显示带颜色的 `review:` 行（`approved`、`rejected` 或 `blocked`）；通过时还会把 `NEXT_SLICE` 显示为蓝色的 `next:` 行
+- **需要时查看拒绝原因：** review 为 `rejected` 时会出现 `[reason]` 按钮，打开可滚动的弹窗查看 `FINDINGS`、`REQUIRED_FIXES`、`DEVELOPER_INSTRUCTIONS` 和 `NEXT_SLICE`，用 `[x]` 或 `esc` 关闭
 - **需要时再看细节：** 平时保持紧凑，点击展开关注的代理，或通过 `[view]` 打开完整子会话；按 `up` 即可返回
 - **重启后仍有历史信息：** 通过 API 按需补齐已有代理的上下文与耗时
 
@@ -98,7 +99,7 @@ opencode plugin add opencode-agents-monitor-sidebar-v3
 - 结合 `session.status`（`busy` / `retry` / `idle`）和共享消息存储，显示实时状态与最近一次工具调用
 - 在需要时为已完成的代理读取一次 `session.messages`，补齐历史会话的上下文与耗时
 - 通过运行状态、`time.idle` 和 `outcome` 将已完成的会话移出活动列表，避免同一个子代理重复出现
-- 扫描每个子代理最后一条助手消息，识别单独的 `REVIEW_STATUS: APPROVED|REJECTED|BLOCKED` 行并显示为带颜色的 `review:` 行；包含三个选项并用 `|` 分隔的模板行会被忽略。结论为 `APPROVED` 时，还会把 `NEXT_SLICE` 内容显示为蓝色的 `next:` 行。
+- 扫描每个子代理最后一条助手消息，识别单独的 `REVIEW_STATUS: APPROVED|REJECTED|BLOCKED` 行并显示为带颜色的 `review:` 行；包含三个选项并用 `|` 分隔的模板行会被忽略。结论为 `APPROVED` 时，还会把 `NEXT_SLICE` 内容显示为蓝色的 `next:` 行；结论为 `REJECTED` 时，`[reason]` 会在弹窗中显示 findings 和 required fixes。主代理行不会显示任何 review 信息。
 - 将组件状态保存在插槽组件树之外，因此插槽重渲染不会重置展开与历史偏好
 
 ### 开发
