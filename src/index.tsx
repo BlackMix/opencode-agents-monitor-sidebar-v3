@@ -352,12 +352,10 @@ function Agent(props: {
           <text fg={nameColor()}>
             <b>[{agentName(props.session)}]</b>
           </text>
-          <Show when={!props.primary}>
-            <text fg={theme().text.muted}>
-              {stateAbbr()} {ctx() !== undefined ? formatTokens(ctx()!) : "-"}{" "}
-              {elapsedMs() !== undefined ? formatElapsed(elapsedMs()!) : "-"}
-            </text>
-          </Show>
+          <text fg={theme().text.muted}>
+            {stateAbbr()} {ctx() !== undefined ? formatTokens(ctx()!) : "-"}{" "}
+            {elapsedMs() !== undefined ? formatElapsed(elapsedMs()!) : "-"}
+          </text>
         </box>
         <Show when={!props.current}>
           <box onMouseDown={() => context.ui.router.navigate({ type: "session", sessionID: props.session.id })}>
