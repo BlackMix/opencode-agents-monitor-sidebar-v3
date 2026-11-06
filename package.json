@@ -30,10 +30,14 @@
   "files": [
     "dist",
     "assets",
+    "agents",
+    "script/install-agents.mjs",
     "tui.js"
   ],
   "scripts": {
     "build": "bun run script/build.mjs",
+    "install:agents": "node ./script/install-agents.mjs",
+    "postinstall": "node ./script/install-agents.mjs",
     "prepublishOnly": "bun run build"
   },
   "dependencies": {

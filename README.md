@@ -72,6 +72,21 @@ Point the global `~/.config/opencode/cli.json` at the checkout. In OpenCode v2, 
 
 Reload the TUI (`/reload`). The widget appears in the session sidebar; press `ctrl+x`, then `b` if the sidebar is hidden.
 
+### Bundled agents
+
+The package ships two agent definitions in `agents/`:
+
+- `developer.md` — primary agent that plans, implements, tests, and coordinates the reviewer
+- `reviewer.md` — read-only subagent that reviews plans, audits implementations, and selects the next slice
+
+They are copied into `~/.config/opencode/agents/` by the npm `postinstall` hook and, for local-path installs, the first time the plugin starts. Existing files are never overwritten, so local edits survive plugin updates. To refresh them explicitly:
+
+```bash
+node script/install-agents.mjs --force
+```
+
+Agents defined in a project's `.opencode/agents/` still take precedence over these global copies.
+
 #### From npm
 
 Once the package is published:

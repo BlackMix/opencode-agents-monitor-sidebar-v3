@@ -7,6 +7,7 @@ import type {
 } from "@opencode/client"
 import { Plugin, usePlugin } from "@opencode/plugin/tui"
 import { createEffect, createMemo, createRoot, createSignal, For, onCleanup, Show } from "solid-js"
+import { installAgents } from "../script/install-agents.mjs"
 
 type Context = ReturnType<typeof usePlugin>
 
@@ -682,6 +683,22 @@ function View(props: { tracker: Tracker; session_id: string }) {
 export default Plugin.define({
   id: "agents-sidebar",
   setup(context) {
+    // Local-path installs never run npm's postinstall, so make sure the bundled
+    // agents exist before the tracker starts. Existing files are preserved.
+    let installed: string[] = []
+    try {
+      installed = installAgents({ quiet: true })
+    } catch {}
+    if (installed.length > 0) {
+      void context.client.location
+        .reload()
+        .then(() => {
+          context.data.location.agent.invalidate()
+          return context.data.location.agent.sync()
+        })
+        .catch(() => {})
+    }
+
     const { tracker, dispose } = createTracker(context)
     const remove = context.ui.slot({
       append: "sidebar.content",

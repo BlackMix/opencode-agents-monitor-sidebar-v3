@@ -7,6 +7,7 @@ OpenCode TUI plugin that renders an Agents sidebar. The entire plugin is one Typ
 - Install dependencies: `bun install` (bun is the package manager; no lockfile is committed, versions float within `^` ranges).
 - Build the plugin entry: `bun install` then `bun run build` (writes `dist/index.js` via `script/build.mjs` — the Solid JSX transform from `@opentui/solid/bun-plugin`, runtime specifiers kept external). There are no tests, no lint, no typecheck script; `bun x tsc --noEmit` won't work without a tsconfig. Verification is manual (below).
 - Regenerate logo assets after touching them: `node script/logo.mjs` (writes `assets/logo-dark.svg`, `assets/logo-light.svg`).
+- Reinstall the bundled agents after editing `agents/*.md`: `node script/install-agents.mjs --force` (copies them to `~/.config/opencode/agents`). The same installer runs on `postinstall` and once from the plugin setup, skipping files that already exist.
 
 ## Manual verification (the only test path)
 
@@ -31,6 +32,7 @@ OpenCode TUI plugin that renders an Agents sidebar. The entire plugin is one Typ
 - The tracker anchors on the root session (`context.data.session.root`), renders the root as the `primary` row, and lists every descendant session as a sub-agent, indented by depth.
 - Live status comes from `context.data.session.status`; message data is hydrated lazily for completed agents.
 - The `history` checkbox is persisted in the `agents_sidebar` storage entry and hides completed sessions by default.
+- `agents/*.md` ships the default `developer` and `reviewer` definitions. `script/install-agents.mjs` copies them to `~/.config/opencode/agents`; it runs from `postinstall` and from `setup()` (local-path installs), never overwriting existing files unless `--force` is passed.
 
 ## Gotchas
 

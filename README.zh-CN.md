@@ -72,6 +72,21 @@ bun run build
 
 重新加载 TUI（`/reload`）。组件会出现在会话侧栏中；如果侧栏处于隐藏状态，先按 `ctrl+x`，再按 `b` 打开。
 
+### 内置 Agents
+
+安装包在 `agents/` 中附带两个 agent 定义：
+
+- `developer.md` — 负责规划、实现、测试并协调 reviewer 的主代理
+- `reviewer.md` — 只读子代理，用于审查计划、审计实现并选择下一个切片
+
+npm 的 `postinstall` 钩子会把它们复制到 `~/.config/opencode/agents/`；使用本地路径安装时，则会在插件首次启动时复制。已存在的文件不会被覆盖，因此本地修改会在插件升级后保留。需要强制刷新时：
+
+```bash
+node script/install-agents.mjs --force
+```
+
+项目 `.opencode/agents/` 中的同名 agent 仍然优先于这些全局副本。
+
 #### 从 npm 安装
 
 包发布到 npm 后：
