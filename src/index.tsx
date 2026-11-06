@@ -352,9 +352,6 @@ function Agent(props: {
           <text fg={nameColor()}>
             <b>[{agentName(props.session)}]</b>
           </text>
-          <Show when={props.primary}>
-            <text fg={theme().hue.interactive[200]}>primary</text>
-          </Show>
           <Show when={!props.primary}>
             <text fg={theme().text.muted}>
               {stateAbbr()} {ctx() !== undefined ? formatTokens(ctx()!) : "-"}{" "}
