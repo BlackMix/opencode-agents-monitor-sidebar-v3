@@ -422,7 +422,7 @@ function Agent(props: {
     setTimeout(() => {
       const close = () => context.ui.dialog.clear()
       context.ui.dialog.show(() => <ReviewReason review={value} context={context} close={close} />)
-      context.ui.dialog.set({ size: "large", centered: true })
+      context.ui.dialog.set({ size: "xlarge", centered: true })
     }, 0)
   }
   const verdictColor = createMemo(() => {
@@ -494,6 +494,7 @@ function Agent(props: {
 
 function ReviewReason(props: { review: Review; context: Context; close: () => void }) {
   const theme = () => props.context.theme
+  const contentHeight = Math.max(12, Math.min(30, props.context.renderer.height - 14))
   return (
     <box flexDirection="column" gap={1} width="100%">
       <box flexDirection="row" justifyContent="space-between" width="100%">
@@ -504,7 +505,7 @@ function ReviewReason(props: { review: Review; context: Context; close: () => vo
           [x] close
         </text>
       </box>
-      <scrollbox height={16} width="100%">
+      <scrollbox height={contentHeight} width="100%">
         <box flexDirection="column" gap={1}>
           <Show when={props.review.findings.length > 0}>
             <text fg={theme().text.base}>
