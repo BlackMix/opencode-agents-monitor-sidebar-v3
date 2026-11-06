@@ -12,6 +12,14 @@ const HISTORY_PAGE_SIZE = 10
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
 
+// Fixed hues keep the state word readable even when a theme's accent hue
+// changes: purple for thinking, blue for tool calls, green for finished work.
+const STATE_COLORS = {
+  thinking: "#c792ea",
+  tool: "#82aaff",
+  done: "#7fd88f",
+} as const
+
 type Tracker = {
   root: (sessionID: string) => SessionInfo | undefined
   active: (sessionID: string) => SessionInfo[]
@@ -293,10 +301,10 @@ function Agent(props: {
   )
   const state = createMemo(() => {
     if (status() === "running") {
-      if (running()) return { label: "tool", color: theme().text.feedback.warning.base }
-      return { label: "thinking", color: theme().hue.accent[200] }
+      if (running()) return { label: "tool", color: STATE_COLORS.tool }
+      return { label: "thinking", color: STATE_COLORS.thinking }
     }
-    if (lastAssistant()?.finish) return { label: "done", color: theme().text.muted }
+    if (lastAssistant()?.finish) return { label: "done", color: STATE_COLORS.done }
     return { label: "idle", color: theme().text.muted }
   })
   const stateAbbr = createMemo(() => {
@@ -352,8 +360,9 @@ function Agent(props: {
           <text fg={nameColor()}>
             <b>[{agentName(props.session)}]</b>
           </text>
+          <text fg={state().color}>{stateAbbr()}</text>
           <text fg={theme().text.muted}>
-            {stateAbbr()} {ctx() !== undefined ? formatTokens(ctx()!) : "-"}{" "}
+            {ctx() !== undefined ? formatTokens(ctx()!) : "-"}{" "}
             {elapsedMs() !== undefined ? formatElapsed(elapsedMs()!) : "-"}
           </text>
         </box>
