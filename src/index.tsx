@@ -494,9 +494,9 @@ function Agent(props: {
 
 function ReviewReason(props: { review: Review; context: Context; close: () => void }) {
   const theme = () => props.context.theme
-  const contentHeight = Math.max(12, Math.min(30, props.context.renderer.height - 14))
+  const contentHeight = Math.max(10, Math.min(28, props.context.renderer.height - 16))
   return (
-    <box flexDirection="column" gap={1} width="100%">
+    <box flexDirection="column" gap={1} width="100%" paddingX={2} paddingY={1}>
       <box flexDirection="row" justifyContent="space-between" width="100%">
         <text fg={theme().text.feedback.error.base}>
           <b>Review rejected</b>
