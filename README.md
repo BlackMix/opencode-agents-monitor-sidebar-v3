@@ -42,6 +42,7 @@ Once a session fans out across several tasks, it becomes hard to tell what is st
 - **Useful numbers, not noise:** context, elapsed time, model, and cost for each agent
 - **Idle agents stay visible:** when a sub-agent finishes it remains in the list with a dimmed `-` marker, so you always know what is idle instead of watching rows disappear
 - **A tidy long-running session:** only the latest run of each sub-agent stays in the main list; older runs hide behind an opt-in `history` checkbox and are paginated when opened
+- **Reviewer verdicts at a glance:** when a sub-agent ends with `REVIEW_STATUS:` and a single verdict, the sidebar shows a colored `review:` line (`approved`, `rejected`, or `blocked`)
 - **Details on demand:** keep rows compact, expand the ones you care about, or use `[view]` to open the full child session; press `up` to return
 - **History after a restart:** context and elapsed time for earlier agents are restored lazily from the API
 
@@ -97,6 +98,7 @@ Status markers breathe while an agent is active; `!` means retrying, and `-` mea
 - Combines `session.status` (`busy` / `retry` / `idle`) with the shared message store to show live state and the latest tool call.
 - Fetches `session.messages` once for completed agents when needed, restoring context size and elapsed time for historical sessions.
 - Keeps completed sessions out of the active list using their run state, `time.idle`, and `outcome`, so the same sub-agent does not appear twice.
+- Scans each sub-agent's last assistant text for a standalone `REVIEW_STATUS: APPROVED|REJECTED|BLOCKED` line and renders it as a colored `review:` row; the template line with all three options separated by `|` is ignored.
 - Keeps widget state outside the slot component tree, so slot re-renders do not reset your expanded and history preferences.
 
 ### Development

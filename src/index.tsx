@@ -1,5 +1,10 @@
 /** @jsxImportSource @opentui/solid */
-import type { SessionInfo, SessionMessageAssistant, SessionMessageAssistantTool } from "@opencode/client"
+import type {
+  SessionInfo,
+  SessionMessageAssistant,
+  SessionMessageAssistantText,
+  SessionMessageAssistantTool,
+} from "@opencode/client"
 import { Plugin, usePlugin } from "@opencode/plugin/tui"
 import { createEffect, createMemo, createRoot, createSignal, For, onCleanup, Show } from "solid-js"
 
@@ -49,6 +54,13 @@ function agentDesc(session: SessionInfo) {
   const desc = (session.title ?? "").replace(/\s*\(@[^\s()]+\s+subagent\)\s*$/, "")
   return desc.length > 38 ? `${desc.slice(0, 37)}~` : desc
 }
+
+type ReviewVerdict = "APPROVED" | "REJECTED" | "BLOCKED"
+
+// Reviewers end their answer with a `REVIEW_STATUS: APPROVED|REJECTED|BLOCKED`
+// line. The template itself contains all three words separated by pipes, so the
+// negative lookahead keeps that echoed line from being mistaken for a verdict.
+const REVIEW_STATUS = /REVIEW_STATUS\s*:\s*(APPROVED|REJECTED|BLOCKED)(?!\s*\|)/gi
 
 function formatTokens(value: number) {
   if (value >= 1_000_000) return `${Math.round(value / 1_000_000)}m`
@@ -339,6 +351,28 @@ function Agent(props: {
     const label = state().label
     return label === "thinking" || label === "tool" ? theme().text.base : theme().text.muted
   })
+  const verdict = createMemo(() => {
+    const items = messages()
+    for (let index = items.length - 1; index >= 0; index -= 1) {
+      const message = items[index]
+      if (message.type !== "assistant") continue
+      const text = message.content
+        .filter((item): item is SessionMessageAssistantText => item.type === "text")
+        .map((item) => item.text)
+        .join("\n")
+      const matches = [...text.matchAll(REVIEW_STATUS)]
+      const hit = matches[matches.length - 1]?.[1]
+      if (hit) return hit.toUpperCase() as ReviewVerdict
+    }
+    return undefined
+  })
+  const verdictColor = createMemo(() => {
+    const value = verdict()
+    if (value === "APPROVED") return STATE_COLORS.done
+    if (value === "REJECTED") return theme().text.feedback.error.base
+    if (value === "BLOCKED") return theme().text.feedback.warning.base
+    return theme().text.muted
+  })
 
   // Breathing indicator (ASCII only), driven by the tracker's 400ms `breathing` tick.
   const phase = createMemo(() => props.tracker.breathing() % 4)
@@ -374,6 +408,11 @@ function Agent(props: {
       </box>
       <Show when={!props.primary}>
         <text fg={theme().text.muted}>  {agentDesc(props.session)}</text>
+      </Show>
+      <Show when={verdict()}>
+        {(value) => (
+          <text fg={verdictColor()}>  review: {value().toLowerCase()}</text>
+        )}
       </Show>
       <Show when={open()}>
         <text fg={theme().text.muted}>  model: {model()}</text>
