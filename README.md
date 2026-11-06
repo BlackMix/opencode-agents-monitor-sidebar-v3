@@ -22,9 +22,12 @@ Expand an agent for its model, current tool, and cost. When you need the full st
 <p align="center">
   <img src="assets/opencode-agents-monitor.png" alt="Agents sidebar tracking an OpenCode primary agent and its sub-agents">
 </p>
+<p align="center"><sub>Primary agent and live sub-agent progress</sub></p>
+
 <p align="center">
   <img src="assets/opencode-agents-monitor-2.png" alt="Agents sidebar keeping idle sub-agents visible with a dimmed indicator">
 </p>
+<p align="center"><sub>Idle sub-agents stay visible; older runs sit behind the history checkbox</sub></p>
 
 ### Why use it?
 
