@@ -123,6 +123,10 @@ bun run build # writes dist/index.js
 npm publish
 ```
 
+### Author
+
+BlackMix · [mixchatmix3@gmail.com](mailto:mixchatmix3@gmail.com)
+
 ### License
 
 MIT. See [LICENSE](LICENSE).

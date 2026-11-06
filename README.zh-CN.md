@@ -123,6 +123,10 @@ bun run build # 生成 dist/index.js
 npm publish
 ```
 
+### 作者
+
+BlackMix · [mixchatmix3@gmail.com](mailto:mixchatmix3@gmail.com)
+
 ### 许可证
 
 MIT。详见 [LICENSE](LICENSE)。
