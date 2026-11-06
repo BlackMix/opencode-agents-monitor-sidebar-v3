@@ -25,9 +25,9 @@
 <p align="center"><sub>主代理与子代理的实时进度</sub></p>
 
 <p align="center">
-  <img src="assets/opencode-agents-monitor-2.png" alt="Agents 侧栏用暗色指示器保持空闲子代理可见">
+  <img src="assets/opencode-agents-monitor-2.png" alt="Agents 侧栏显示已完成工作的子代理">
 </p>
-<p align="center"><sub>空闲子代理保持可见，较早的记录放在 history 复选框后面</sub></p>
+<p align="center"><sub>子代理完成的工作</sub></p>
 
 ### 为什么需要它？
 
