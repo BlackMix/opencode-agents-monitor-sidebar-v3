@@ -85,7 +85,7 @@ opencode plugin add opencode-agents-monitor-sidebar-v3
 | Click `[ ] history (n)` | Show or hide completed agents (persists) |
 | Click `[<]` / `[>]` | Move through history pages |
 
-Status markers breathe while an agent is active; `!` means retrying, and `-` means idle or done. The primary agent row is intentionally compact and shows only its name and the `primary` badge; sub-agents also show their state, context, and elapsed time.
+Status markers breathe while an agent is active; `!` means retrying, and `-` means idle or done. The primary row shows its state, context, and elapsed time without any `primary` label.
 
 ### How it works
 
