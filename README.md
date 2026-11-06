@@ -22,10 +22,13 @@ Expand an agent for its model, current tool, and cost. When you need the full st
 <p align="center">
   <img src="assets/opencode-agents-monitor.png" alt="Agents sidebar tracking an OpenCode primary agent and its sub-agents">
 </p>
+<p align="center">
+  <img src="assets/opencode-agents-monitor-2.png" alt="Agents sidebar keeping idle sub-agents visible with a dimmed indicator">
+</p>
 
 ### Why use it?
 
-Once a session fans out across several tasks, it becomes hard to tell what is still moving and what has already finished. The widget keeps that picture visible: active work updates in real time, completed agents move into an opt-in history section, and earlier child sessions reappear when the TUI starts.
+Once a session fans out across several tasks, it becomes hard to tell what is still moving and what has already finished. The widget keeps that picture visible: active work updates in real time, the last completed run of each sub-agent stays listed with a dimmed marker, older runs move into an opt-in history section, and earlier child sessions reappear when the TUI starts.
 
 ### What you get
 
@@ -34,7 +37,8 @@ Once a session fans out across several tasks, it becomes hard to tell what is st
 - **Live progress at a glance:** distinguish `thinking`, `tool`, `retry`, `done`, and `idle` states as they change
 - **The current tool, while it runs:** see a concise call such as `bash npm test` before it finishes
 - **Useful numbers, not noise:** context, elapsed time, model, and cost for each agent
-- **A tidy long-running session:** completed agents stay hidden behind an opt-in `history` checkbox and are paginated when opened
+- **Idle agents stay visible:** when a sub-agent finishes it remains in the list with a dimmed `-` marker, so you always know what is idle instead of watching rows disappear
+- **A tidy long-running session:** only the latest run of each sub-agent stays in the main list; older runs hide behind an opt-in `history` checkbox and are paginated when opened
 - **Details on demand:** keep rows compact, expand the ones you care about, or use `[view]` to open the full child session; press `up` to return
 - **History after a restart:** context and elapsed time for earlier agents are restored lazily from the API
 
@@ -81,7 +85,7 @@ opencode plugin add opencode-agents-monitor-sidebar-v3
 | Click `[ ] history (n)` | Show or hide completed agents (persists) |
 | Click `[<]` / `[>]` | Move through history pages |
 
-Status markers breathe while an agent is active; `!` means retrying, and `-` means idle or done. The primary agent row is intentionally compact and shows only its live state, context, elapsed time, and status.
+Status markers breathe while an agent is active; `!` means retrying, and `-` means idle or done. The primary agent row is intentionally compact and shows only its name and the `primary` badge; sub-agents also show their state, context, and elapsed time.
 
 ### How it works
 

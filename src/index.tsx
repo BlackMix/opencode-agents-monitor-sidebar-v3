@@ -8,14 +8,15 @@ type Context = ReturnType<typeof usePlugin>
 type Run = { start: number; end?: number }
 
 const STORAGE_KEY = "agents_sidebar"
-const ARCHIVED_PAGE_SIZE = 10
+const HISTORY_PAGE_SIZE = 10
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
 
 type Tracker = {
   root: (sessionID: string) => SessionInfo | undefined
   active: (sessionID: string) => SessionInfo[]
-  archived: (sessionID: string) => SessionInfo[]
+  latest: (sessionID: string) => SessionInfo[]
+  history: (sessionID: string) => SessionInfo[]
   depth: (sessionID: string) => number
   run: (sessionID: string) => Run | undefined
   now: () => number
@@ -26,8 +27,8 @@ type Tracker = {
   toggleHistory: () => void
   expanded: (sessionID: string, fallback: boolean) => boolean
   toggleExpanded: (sessionID: string, fallback: boolean) => void
-  archivedPage: (sessionID: string) => number
-  setArchivedPage: (sessionID: string, page: number) => void
+  historyPage: (sessionID: string) => number
+  setHistoryPage: (sessionID: string, page: number) => void
 }
 
 function agentName(session: SessionInfo) {
@@ -80,7 +81,7 @@ function createTracker(context: Context): { tracker: Tracker; dispose: () => voi
     const [now, setNow] = createSignal(Date.now())
     const [breathing, setBreathing] = createSignal(0)
     const [expandedMap, setExpandedMap] = createSignal<Record<string, boolean>>({})
-    const [archivedPageMap, setArchivedPageMap] = createSignal<Record<string, number>>({})
+    const [historyPageMap, setHistoryPageMap] = createSignal<Record<string, number>>({})
     const hydrated = new Set<string>()
 
     function isDone(session: SessionInfo) {
@@ -132,6 +133,42 @@ function createTracker(context: Context): { tracker: Tracker; dispose: () => voi
       return depth
     }
 
+    function agentKey(session: SessionInfo) {
+      const hit = (session.title ?? "").match(/\(@([^\s()]+)\s+subagent\)\s*$/)
+      return hit?.[1] ?? session.agent ?? "agent"
+    }
+
+    function endedAt(session: SessionInfo) {
+      return runs()[session.id]?.end ?? session.time.updated
+    }
+
+    // Keep one completed row per sub-agent visible (dimmed) so an idle agent
+    // does not vanish. If that agent is currently running, the active row is
+    // the visible one and its previous runs belong to history.
+    function latestDone(sessionID: string) {
+      const busy = new Set(
+        descendants(sessionID)
+          .filter((session) => !isDone(session))
+          .map((session) => agentKey(session)),
+      )
+      const latest = new Map<string, SessionInfo>()
+      for (const session of descendants(sessionID)) {
+        if (!isDone(session)) continue
+        const key = agentKey(session)
+        if (busy.has(key)) continue
+        const current = latest.get(key)
+        if (!current || endedAt(session) > endedAt(current)) latest.set(key, session)
+      }
+      return [...latest.values()].sort((a, b) => endedAt(b) - endedAt(a))
+    }
+
+    function historySessions(sessionID: string) {
+      const visible = new Set(latestDone(sessionID).map((session) => session.id))
+      return descendants(sessionID)
+        .filter((session) => isDone(session) && !visible.has(session.id))
+        .sort((a, b) => endedAt(b) - endedAt(a))
+    }
+
     // Seed subagents that predate the TUI: they are absent from the client data
     // store until something syncs them by id.
     void context.client.session
@@ -178,10 +215,11 @@ function createTracker(context: Context): { tracker: Tracker; dispose: () => voi
             .filter((session) => !isDone(session))
             .sort((a, b) => a.time.created - b.time.created)
         },
-        archived(sessionID) {
-          return descendants(sessionID)
-            .filter((session) => isDone(session))
-            .sort((a, b) => (runs()[b.id]?.end ?? b.time.updated) - (runs()[a.id]?.end ?? a.time.updated))
+        latest(sessionID) {
+          return latestDone(sessionID)
+        },
+        history(sessionID) {
+          return historySessions(sessionID)
         },
         depth(sessionID) {
           return depthOf(sessionID)
@@ -214,16 +252,16 @@ function createTracker(context: Context): { tracker: Tracker; dispose: () => voi
           const next = !(expandedMap()[sessionID] ?? fallback)
           setExpandedMap((current) => ({ ...current, [sessionID]: next }))
         },
-        archivedPage(sessionID) {
-          const total = descendants(sessionID).filter((session) => isDone(session)).length
-          const pages = Math.max(1, Math.ceil(total / ARCHIVED_PAGE_SIZE))
-          return Math.min(archivedPageMap()[sessionID] ?? 0, pages - 1)
+        historyPage(sessionID) {
+          const total = historySessions(sessionID).length
+          const pages = Math.max(1, Math.ceil(total / HISTORY_PAGE_SIZE))
+          return Math.min(historyPageMap()[sessionID] ?? 0, pages - 1)
         },
-        setArchivedPage(sessionID, page) {
-          const total = descendants(sessionID).filter((session) => isDone(session)).length
-          const pages = Math.max(1, Math.ceil(total / ARCHIVED_PAGE_SIZE))
+        setHistoryPage(sessionID, page) {
+          const total = historySessions(sessionID).length
+          const pages = Math.max(1, Math.ceil(total / HISTORY_PAGE_SIZE))
           const clamped = Math.max(0, Math.min(page, pages - 1))
-          setArchivedPageMap((current) => ({ ...current, [sessionID]: clamped }))
+          setHistoryPageMap((current) => ({ ...current, [sessionID]: clamped }))
         },
       },
     }
@@ -288,6 +326,11 @@ function Agent(props: {
     return end > props.session.time.created ? end - props.session.time.created : undefined
   })
   const open = createMemo(() => props.tracker.expanded(props.session.id, false))
+  const nameColor = createMemo(() => {
+    if (props.primary) return theme().text.base
+    const label = state().label
+    return label === "thinking" || label === "tool" ? theme().text.base : theme().text.muted
+  })
 
   // Breathing indicator (ASCII only), driven by the tracker's 400ms `breathing` tick.
   const phase = createMemo(() => props.tracker.breathing() % 4)
@@ -306,16 +349,18 @@ function Agent(props: {
           onMouseDown={() => props.tracker.toggleExpanded(props.session.id, false)}
         >
           <text fg={state().color}>{indicator()}</text>
-          <text fg={theme().text.base}>
+          <text fg={nameColor()}>
             <b>[{agentName(props.session)}]</b>
           </text>
           <Show when={props.primary}>
             <text fg={theme().hue.interactive[200]}>primary</text>
           </Show>
-          <text fg={theme().text.muted}>
-            {stateAbbr()} {ctx() !== undefined ? formatTokens(ctx()!) : "-"}{" "}
-            {elapsedMs() !== undefined ? formatElapsed(elapsedMs()!) : "-"}
-          </text>
+          <Show when={!props.primary}>
+            <text fg={theme().text.muted}>
+              {stateAbbr()} {ctx() !== undefined ? formatTokens(ctx()!) : "-"}{" "}
+              {elapsedMs() !== undefined ? formatElapsed(elapsedMs()!) : "-"}
+            </text>
+          </Show>
         </box>
         <Show when={!props.current}>
           <box onMouseDown={() => context.ui.router.navigate({ type: "session", sessionID: props.session.id })}>
@@ -335,18 +380,29 @@ function Agent(props: {
   )
 }
 
+function Divider(props: { label?: string }) {
+  const context = usePlugin()
+  const theme = () => context.theme
+  return (
+    <box marginTop={1}>
+      <text fg={theme().text.muted}>{(props.label ? `── ${props.label} ` : "") + "────────────────────────────────"}</text>
+    </box>
+  )
+}
+
 function View(props: { tracker: Tracker; session_id: string }) {
   const context = usePlugin()
   const theme = () => context.theme
   const root = createMemo(() => props.tracker.root(props.session_id))
   const active = createMemo(() => props.tracker.active(props.session_id))
-  const archived = createMemo(() => props.tracker.archived(props.session_id))
-  const total = () => active().length + archived().length
-  const archivedTotalPages = createMemo(() => Math.max(1, Math.ceil(archived().length / ARCHIVED_PAGE_SIZE)))
-  const archivedPage = createMemo(() => props.tracker.archivedPage(props.session_id))
-  const archivedItems = createMemo(() => {
-    const start = archivedPage() * ARCHIVED_PAGE_SIZE
-    return archived().slice(start, start + ARCHIVED_PAGE_SIZE)
+  const latest = createMemo(() => props.tracker.latest(props.session_id))
+  const history = createMemo(() => props.tracker.history(props.session_id))
+  const total = () => active().length + latest().length + history().length
+  const historyTotalPages = createMemo(() => Math.max(1, Math.ceil(history().length / HISTORY_PAGE_SIZE)))
+  const historyPage = createMemo(() => props.tracker.historyPage(props.session_id))
+  const historyItems = createMemo(() => {
+    const start = historyPage() * HISTORY_PAGE_SIZE
+    return history().slice(start, start + HISTORY_PAGE_SIZE)
   })
 
   return (
@@ -362,14 +418,7 @@ function View(props: { tracker: Tracker; session_id: string }) {
         </text>
       </box>
       <Show when={!props.tracker.collapsed()}>
-        <Show when={archived().length > 0}>
-          <box flexDirection="row" gap={1} onMouseDown={() => props.tracker.toggleHistory()}>
-            <text fg={props.tracker.showHistory() ? theme().hue.interactive[200] : theme().text.muted}>
-              {props.tracker.showHistory() ? "[x]" : "[ ]"}
-            </text>
-            <text fg={theme().text.muted}>history ({archived().length})</text>
-          </box>
-        </Show>
+        <Divider label="Primary" />
         <Show when={root()}>
           {(session) => (
             <Agent
@@ -380,7 +429,16 @@ function View(props: { tracker: Tracker; session_id: string }) {
             />
           )}
         </Show>
+        <Divider label="Sub Agents" />
         <Show when={total() > 0} fallback={<text fg={theme().text.muted}>No subagents yet</text>}>
+          <Show when={history().length > 0}>
+            <box flexDirection="row" gap={1} onMouseDown={() => props.tracker.toggleHistory()}>
+              <text fg={props.tracker.showHistory() ? theme().hue.interactive[200] : theme().text.muted}>
+                {props.tracker.showHistory() ? "[x]" : "[ ]"}
+              </text>
+              <text fg={theme().text.muted}>history ({history().length})</text>
+            </box>
+          </Show>
           <For each={active()}>
             {(child) => (
               <Agent
@@ -391,8 +449,18 @@ function View(props: { tracker: Tracker; session_id: string }) {
               />
             )}
           </For>
+          <For each={latest()}>
+            {(child) => (
+              <Agent
+                tracker={props.tracker}
+                session={child}
+                current={child.id === props.session_id}
+                depth={props.tracker.depth(child.id)}
+              />
+            )}
+          </For>
           <Show when={props.tracker.showHistory()}>
-            <For each={archivedItems()}>
+            <For each={historyItems()}>
               {(child) => (
                 <Agent
                   tracker={props.tracker}
@@ -402,20 +470,20 @@ function View(props: { tracker: Tracker; session_id: string }) {
                 />
               )}
             </For>
-            <Show when={archivedTotalPages() > 1}>
+            <Show when={historyTotalPages() > 1}>
               <box flexDirection="row" gap={1}>
                 <text
-                  fg={archivedPage() > 0 ? theme().hue.interactive[200] : theme().text.muted}
-                  onMouseDown={() => props.tracker.setArchivedPage(props.session_id, archivedPage() - 1)}
+                  fg={historyPage() > 0 ? theme().hue.interactive[200] : theme().text.muted}
+                  onMouseDown={() => props.tracker.setHistoryPage(props.session_id, historyPage() - 1)}
                 >
                   [&lt;]
                 </text>
                 <text fg={theme().text.muted}>
-                  {archivedPage() + 1}/{archivedTotalPages()}
+                  {historyPage() + 1}/{historyTotalPages()}
                 </text>
                 <text
-                  fg={archivedPage() < archivedTotalPages() - 1 ? theme().hue.interactive[200] : theme().text.muted}
-                  onMouseDown={() => props.tracker.setArchivedPage(props.session_id, archivedPage() + 1)}
+                  fg={historyPage() < historyTotalPages() - 1 ? theme().hue.interactive[200] : theme().text.muted}
+                  onMouseDown={() => props.tracker.setHistoryPage(props.session_id, historyPage() + 1)}
                 >
                   [&gt;]
                 </text>
@@ -423,6 +491,7 @@ function View(props: { tracker: Tracker; session_id: string }) {
             </Show>
           </Show>
         </Show>
+        <Divider />
       </Show>
     </box>
   )
