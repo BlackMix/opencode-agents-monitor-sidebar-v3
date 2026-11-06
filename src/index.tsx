@@ -62,6 +62,28 @@ type ReviewVerdict = "APPROVED" | "REJECTED" | "BLOCKED"
 // negative lookahead keeps that echoed line from being mistaken for a verdict.
 const REVIEW_STATUS = /REVIEW_STATUS\s*:\s*(APPROVED|REJECTED|BLOCKED)(?!\s*\|)/gi
 
+// Reads a labeled block such as `NEXT_SLICE:` and joins its lines into one
+// short sentence, stopping at the next ALL_CAPS label (FINDINGS, REQUIRED_FIXES…).
+function sectionValue(text: string, label: string) {
+  const pattern = new RegExp(`${label}\\s*:`, "gi")
+  let start = -1
+  for (const match of text.matchAll(pattern)) start = (match.index ?? 0) + match[0].length
+  if (start < 0) return undefined
+  const rest = text.slice(start)
+  const stop = rest.search(/\n\s*[A-Z][A-Z_]{2,}\s*:/)
+  const body = (stop === -1 ? rest : rest.slice(0, stop))
+    .split("\n")
+    .map((line) => line.replace(/^\s*[-*]\s*/, "").trim())
+    .filter(Boolean)
+    .join(" ")
+    .trim()
+  return body || undefined
+}
+
+function shortText(text: string, max = 44) {
+  return text.length > max ? `${text.slice(0, max - 1)}~` : text
+}
+
 function formatTokens(value: number) {
   if (value >= 1_000_000) return `${Math.round(value / 1_000_000)}m`
   if (value >= 1000) return `${Math.round(value / 1000)}k`
@@ -351,7 +373,7 @@ function Agent(props: {
     const label = state().label
     return label === "thinking" || label === "tool" ? theme().text.base : theme().text.muted
   })
-  const verdict = createMemo(() => {
+  const review = createMemo(() => {
     const items = messages()
     for (let index = items.length - 1; index >= 0; index -= 1) {
       const message = items[index]
@@ -362,10 +384,20 @@ function Agent(props: {
         .join("\n")
       const matches = [...text.matchAll(REVIEW_STATUS)]
       const hit = matches[matches.length - 1]?.[1]
-      if (hit) return hit.toUpperCase() as ReviewVerdict
+      if (hit) {
+        return {
+          verdict: hit.toUpperCase() as ReviewVerdict,
+          next: sectionValue(text, "NEXT_SLICE"),
+        }
+      }
     }
     return undefined
   })
+  const verdict = () => review()?.verdict
+  const nextSlice = () => {
+    const value = review()
+    return value?.verdict === "APPROVED" ? value.next : undefined
+  }
   const verdictColor = createMemo(() => {
     const value = verdict()
     if (value === "APPROVED") return STATE_COLORS.done
@@ -413,6 +445,9 @@ function Agent(props: {
         {(value) => (
           <text fg={verdictColor()}>  review: {value().toLowerCase()}</text>
         )}
+      </Show>
+      <Show when={nextSlice()}>
+        {(value) => <text fg={STATE_COLORS.tool}>  next: {shortText(value())}</text>}
       </Show>
       <Show when={open()}>
         <text fg={theme().text.muted}>  model: {model()}</text>
