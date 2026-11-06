@@ -80,8 +80,8 @@ function sectionValue(text: string, label: string) {
   return body || undefined
 }
 
-function shortText(text: string, max = 44) {
-  return text.length > max ? `${text.slice(0, max - 1)}~` : text
+function shortText(text: string, max = 30) {
+  return text.length > max ? `${text.slice(0, max - 3)}...` : text
 }
 
 function formatTokens(value: number) {
