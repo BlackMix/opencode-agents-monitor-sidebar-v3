@@ -417,9 +417,13 @@ function Agent(props: {
   const openReason = () => {
     const value = review()
     if (!value) return
-    const close = () => context.ui.dialog.clear()
-    context.ui.dialog.show(() => <ReviewReason review={value} context={context} close={close} />)
-    context.ui.dialog.set({ size: "large", centered: true })
+    // Defer past the click that opened the button: otherwise the same mouse
+    // release reaches the dialog backdrop and closes it immediately.
+    setTimeout(() => {
+      const close = () => context.ui.dialog.clear()
+      context.ui.dialog.show(() => <ReviewReason review={value} context={context} close={close} />)
+      context.ui.dialog.set({ size: "large", centered: true })
+    }, 0)
   }
   const verdictColor = createMemo(() => {
     const value = verdict()
@@ -469,7 +473,7 @@ function Agent(props: {
           <box flexDirection="row" gap={1}>
             <text fg={verdictColor()}>  review: {value().toLowerCase()}</text>
             <Show when={value() === "REJECTED"}>
-              <text fg={theme().hue.interactive[200]} onMouseDown={openReason}>
+              <text fg={theme().hue.interactive[200]} onMouseUp={openReason}>
                 [reason]
               </text>
             </Show>
