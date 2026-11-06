@@ -1,0 +1,49 @@
+{
+  "name": "opencode-agents-monitor-sidebar-v3",
+  "version": "3.0.0",
+  "type": "module",
+  "description": "OpenCode TUI plugin — primary agent and sub-agent status in the sidebar",
+  "author": "BlackMix <mixchatmix3@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackMix/opencode-agents-monitor-sidebar-v3.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BlackMix/opencode-agents-monitor-sidebar-v3/issues"
+  },
+  "homepage": "https://github.com/BlackMix/opencode-agents-monitor-sidebar-v3",
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "tui",
+    "agents",
+    "subagent",
+    "sidebar"
+  ],
+  "engines": {
+    "opencode": ">=2.0.0"
+  },
+  "exports": {
+    "./tui": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "assets",
+    "tui.js"
+  ],
+  "scripts": {
+    "build": "bun run script/build.mjs",
+    "prepublishOnly": "bun run build"
+  },
+  "dependencies": {
+    "@opencode/plugin": "^2.0.15",
+    "solid-js": "^1.9.12",
+    "@opentui/solid": "^0.5.1"
+  },
+  "peerDependencies": {
+    "solid-js": ">=1.9.0",
+    "@opentui/core": ">=0.5.10",
+    "@opentui/solid": ">=0.5.10"
+  }
+}
